@@ -31,6 +31,34 @@ FORCE_DROP = true
 
 
 
+def sector_xy(lat, lon, r = 10)
+  # We suppose latitude is also [-180,180] so the sector are squares
+  lat += 180
+  lon += 180
+  
+  [(2**r*lat/360.0).floor, (2**r*lon/360.0).floor]
+end
+
+def hilbert_distance(x, y, r = 10)
+  s = 0
+  
+  r.downto(0) do |i|
+    xi = (x >> i) & 1 # Get bit i of x
+    yi = (y >> i) & 1 # Get bit i of y
+    
+    if yi == 0
+      temp = x
+      x = y ^ (-xi)
+      y = temp ^ (-xi)
+    end
+    s = 4*s + 2*xi + (xi ^ yi)
+  end
+  
+  s
+end
+
+
+
 # Create the database
 db = SQLite3::Database.new(DATABASE_FILE)
 
@@ -96,7 +124,7 @@ FasterCSV.open(PLACES_FILE, 'rb', CSV_OPTIONS.merge(PLACES_OPTIONS)) do |csv|
   csv.each do |row|
     country_id = countries[row['country_code']]
     puts "<#{row['country_code']}>" if country_id.nil?
-    lon, lat = row['longitude'], row['latitude']
+    lon, lat = row['longitude'].to_f, row['latitude'].to_f
     x, y = sector_xy(lat, lon)
     sector = hilbert_distance(x, y)
     place_insert.execute :name => row['name'], :latitude => lat, :longitude => lon, :country_id => country_id, :sector => sector
@@ -109,27 +137,3 @@ country_insert.close
 place_insert.close
 db.close
 
-def sector_xy(lat, lon, r = 16)
-  lat += 90
-  lon += 180
-  
-  [(r*lat/180.0).floor, (r*lon/360.0).floor]
-end
-
-def hilbert_distance(x, y, r = 16)
-  s = 0
-  
-  r.downto(0) do |i|
-    xi = (x >> i) & 1 # Get bit i of x
-    yi = (y >> i) & 1 # Get bit i of y
-    
-    if yi == 0
-      temp = x
-      x = y ^ (-xi)
-      y = temp ^ (-xi)
-    end
-    s = 4*s + 2*xi + (xi ^ yi)
-  end
-  
-  s
-end
