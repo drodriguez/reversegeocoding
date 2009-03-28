@@ -100,6 +100,31 @@ BOOL checkDatabaseFile(NSString *databaseFile) {
   return [databaseSchemaVersion intValue] == DATABASE_SCHEMA_VERSION;
 }
 
+/**
+ * Returns the spherical distance between two points.
+ */
+double distance(double lat1, double lon1, double lat2, double lon2) {
+  /* Convert all to radians */
+  lat1 = (lat1/180) * M_PI;
+  lon1 = (lon1/180) * M_PI;
+  lat2 = (lat2/180) * M_PI;
+  lon2 = (lon2/180) * M_PI;
+  
+  double clat1 = cos(lat1);
+  double clon1 = cos(lon1);
+  double clat2 = cos(lat2);
+  double clon2 = cos(lon2);
+  
+  double slat1 = sin(lat1);
+  double slon1 = sin(lon1);
+  double slat2 = sin(lat2);
+  double slon2 = sin(lon2);
+  
+  return EARTH_RADIUS*(acos(clat1*clon1*clat2*clon2) +
+                       clat1*slon1*clat2*slon2 +
+                       slat1*slat2)
+}
+
 @implementation RGReverseGeocoder
 
 @synthesize database = database_;
