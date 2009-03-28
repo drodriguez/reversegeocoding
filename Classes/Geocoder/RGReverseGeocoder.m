@@ -37,20 +37,55 @@ static RGReverseGeocoder *sharedInstance = nil;
  */
 - (id)init;
 
+@end
+
+
+#pragma mark Local methods
+
 /**
  * Returns the path of the default database file.
  * This path is <NSApplicationSupportDirectory>/geodata.sqlite.
  */
-+ (NSString *)defaultDatabaseFile;
+NSString *defaultDatabaseFile() {
+  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+  
+  if ([paths count] == 0) {
+    RGLogX(@"Application Support directory in User Domain not found.");
+    return nil;
+  }
+  
+  NSString defaultPath = [[paths objectAtIndex:0]
+                          stringByAppendingPathComponent:DATABASE_FILE];
+  
+  return defaultPath;
+}
 
 /**
  * Check that the database file is current with the actual implementation.
  * This checks against the <databaseFile>.plist that the schema version is
  * supported.
  */
-+ (BOOL)checkDatabaseFile:(NSString *)databaseFile;
-
-@end
+BOOL checkDatabaseFile(NSString *databaseFile) {
+  NSString *plistFile = [databaseFile stringByAppendingString:@".plist"];
+  
+  NSData *metadataData = [NSData dataWithContentsOfFile:plistFile];
+  NSString *error;
+  NSPropertyListFormat format;
+  NSDictionary *metadata =
+  (NSDictionary *)[NSPropertyListSerialization
+                   propertyListFromData:metadataData
+                   mutabilityOption:NSPropertyListImmutable
+                   format:&format
+                   errorDescription:&error];
+  if (!metadata) {
+    RGLogX(@"Database metadata failed to load with error '%@'.", error);
+    return NO;
+  }
+  
+  NSNumber *databaseSchemaVersion = [metadata objectForKey:@"schema_version"];
+  
+  return [databaseSchemaVersion intValue] == DATABASE_SCHEMA_VERSION;
+}
 
 
 @implementation RGReverseGeocoder
@@ -78,6 +113,12 @@ static RGReverseGeocoder *sharedInstance = nil;
   if (self = [super init]) {
     databaseFile_ = [databaseFile copy];
     level_ = DEFAULT_DATABASE_LEVEL;
+    
+    if (!checkDatabaseFile(databaseFile_)) {
+      RGLogX(@"Database schema version for '%@' database differs", databaseFile_);
+      [databaseFile_ release];
+      return nil;
+    }
   }
   
   return self;
@@ -86,48 +127,12 @@ static RGReverseGeocoder *sharedInstance = nil;
 #pragma mark Private instance methods
 
 - (id)init {
-  NSString *file = [self defaultDatabaseFile];
-  if ([self checkDatabaseFile:file]) {
+  NSString *file = defaultDatabaseFile();
+  if (checkDatabaseFile(file)]) {
     return [self initWithDatabase:file];
   } else {
     return nil;
   }
-}
-
-+ (NSString)defaultDatabaseFile {
-  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-  
-  if ([paths count] == 0) {
-    RGLogX(@"Application Support directory in User Domain not found.");
-    return nil;
-  }
-  
-  NSString defaultPath = [[paths objectAtIndex:0]
-                          stringByAppendingPathComponent:DATABASE_FILE];
-  
-  return defaultPath;
-}
-
-+ (BOOL)checkDatabaseFile:(NSString *)databaseFile {
-  NSString *plistFile = [databaseFile stringByAppendingString:@".plist"];
-  
-  NSData *metadataData = [NSData dataWithContentsOfFile:plistFile];
-  NSString *error;
-  NSPropertyListFormat format;
-  NSDictionary *metadata =
-    (NSDictionary *)[NSPropertyListSerialization
-                     propertyListFromData:metadataData
-                         mutabilityOption:NSPropertyListImmutable
-                                   format:&format
-                         errorDescription:&error];
-  if (!metadata) {
-    RGLogX(@"Database metadata failed to load with error '%@'.", error);
-    return NO;
-  }
-  
-  NSNumber *databaseSchemaVersion = [metadata objectForKey:@"schema_version"];
-  
-  return [databaseSchemaVersion intValue] == DATABASE_SCHEMA_VERSION;
 }
 
 /**
