@@ -67,8 +67,8 @@ NSString *defaultDatabaseFile() {
     return nil;
   }
   
-  NSString defaultPath = [[paths objectAtIndex:0]
-                          stringByAppendingPathComponent:DATABASE_FILE];
+  NSString *defaultPath = [[paths objectAtIndex:0]
+                           stringByAppendingPathComponent:DATABASE_FILENAME];
   
   return defaultPath;
 }
@@ -103,7 +103,7 @@ BOOL checkDatabaseFile(NSString *databaseFile) {
 /**
  * Returns the spherical distance between two points.
  */
-double distance(double lat1, double lon1, double lat2, double lon2) {
+double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   /* Convert all to radians */
   lat1 = (lat1/180) * M_PI;
   lon1 = (lon1/180) * M_PI;
@@ -120,14 +120,15 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
   double slat2 = sin(lat2);
   double slon2 = sin(lon2);
   
-  return EARTH_RADIUS*(acos(clat1*clon1*clat2*clon2) +
+  return EARTH_RADIUS*(acos(clat1*clon1*clat2*clon2 +
                        clat1*slon1*clat2*slon2 +
-                       slat1*slat2)
+                       slat1*slat2));
 }
 
 @implementation RGReverseGeocoder
 
 @synthesize database = database_;
+@synthesize level = level_;
 
 #pragma mark Class methods
 + (id)sharedGeocoder {
@@ -142,18 +143,19 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
 
 + (BOOL)setupDatabase {
   // TODO
+  return NO;
 }
 
 #pragma mark Public instance methods
 
-- (id)initWithDatabase:(NSString *)databaseFile {
+- (id)initWithDatabase:(NSString *)databasePath {
   if (self = [super init]) {
-    databaseFile_ = [databaseFile copy];
+    databasePath_ = [databasePath copy];
     self.level = DEFAULT_DATABASE_LEVEL;
     
-    if (!checkDatabaseFile(databaseFile_)) {
-      RGLogX(@"Database schema version for '%@' database differs", databaseFile_);
-      [databaseFile_ release];
+    if (!checkDatabaseFile(databasePath_)) {
+      RGLogX(@"Database schema version for '%@' database differs", databasePath_);
+      [databasePath_ release];
       return nil;
     }
   }
@@ -172,8 +174,8 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
   // TODO: Get the eight sectors around the central one
   int sector = [self hilbertDistanceForRow:row column:col];
   
-  NSString *query = @"SELECT places.name, country.name, latitude, longitude "
-    "FROM places JOIN countries ON places.country_id = country.id "
+  NSString *query = @"SELECT places.name, countries.name, latitude, longitude "
+    "FROM places JOIN countries ON places.country_id = countries.id "
     "WHERE sector = ?";
   
   sqlite3 *db = self.database;
@@ -193,14 +195,13 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
   while (sqlite3_step(stmt) == SQLITE_ROW) {
     double lat = sqlite3_column_double(stmt, 2);
     double lon = sqlite3_column_double(stmt, 3);
-    double distance = distance(location.coordinate.latitude,
-                               location.coordinate.longitude,
-                               lat,
-                               lon);
+    double distance = sphericalDistance(location.coordinate.latitude,
+                                        location.coordinate.longitude,
+                                        lat,
+                                        lon);
     if (distance < minDistance) {
       minDistance = distance;
       
-      if (name) [name release];
       const char *text = (const char *)sqlite3_column_text(stmt, 0);
       if (text == nil) {
         RGLog(@"Row without name!?");
@@ -210,7 +211,6 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
       }
       name = [NSString stringWithUTF8String:text];
       
-      if (country) [country release];
       text = (const char *)sqlite3_column_text(stmt, 1);
       if (text == nil) {
         RGLog(@"Row without country!?");
@@ -241,7 +241,7 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
 
 - (id)init {
   NSString *file = defaultDatabaseFile();
-  if (checkDatabaseFile(file)]) {
+  if (checkDatabaseFile(file)) {
     return [self initWithDatabase:file];
   } else {
     return nil;
@@ -250,7 +250,7 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
 
 - (int)sectorFromCoordinate:(double)coordinate {
   // We suppose latitude is also [-180, 180] so the sectors are squares
-  coordinate += 180
+  coordinate += 180;
   
   return mapDimension_ * coordinate / 360.0;
 }
@@ -260,8 +260,8 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
   
   int xi, yi, temp;
   for(int i = level_; i >= 0; i--) {
-    xi = (x >> i) & 1 /* Get bit i of x */
-    yi = (y >> i) & 1 /* Get bit i of y */
+    xi = (x >> i) & 1; /* Get bit i of x */
+    yi = (y >> i) & 1; /* Get bit i of y */
     
     if (yi == 0) {
       temp = x;         /* Swap x and y and, */
@@ -290,12 +290,9 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
     } else {
       // Default to UTF-8 encoding
       char *errorMsg;
-      NSString sql = @"PRAGMA encoding = \"UTF-8\"";
+      NSString *sql = @"PRAGMA encoding = \"UTF-8\"";
       if (sqlite3_exec(database_, [sql UTF8String], NULL, NULL, &errorMsg) != SQLITE_OK) {
-        NSString *errorMessage =
-          [NSString stringWithFormat:@"Failed to execute SQL '%@' with message '%s'.",
-           sql, errorMsg];
-        RGLogX(errorMessage);
+        RGLogX(@"Failed to execute SQL '%@' with message '%s'.", sql, errorMsg);
         sqlite3_free(errorMsg);
       }
     }
@@ -309,7 +306,7 @@ double distance(double lat1, double lon1, double lat2, double lon2) {
     sqlite3_close(database_);
   }
   
-  [databaseFile_ release];
+  [databasePath_ release];
   
   [super dealloc];
 }
