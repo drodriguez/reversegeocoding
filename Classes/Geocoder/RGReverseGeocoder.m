@@ -108,6 +108,28 @@ static RGReverseGeocoder *sharedInstance = nil;
   return defaultPath;
 }
 
++ (BOOL)checkDatabaseFile:(NSString *)databaseFile {
+  NSString *plistFile = [databaseFile stringByAppendingString:@".plist"];
+  
+  NSData *metadataData = [NSData dataWithContentsOfFile:plistFile];
+  NSString *error;
+  NSPropertyListFormat format;
+  NSDictionary *metadata =
+    (NSDictionary *)[NSPropertyListSerialization
+                     propertyListFromData:metadataData
+                         mutabilityOption:NSPropertyListImmutable
+                                   format:&format
+                         errorDescription:&error];
+  if (!metadata) {
+    RGLogX(@"Database metadata failed to load with error '%@'.", error);
+    return NO;
+  }
+  
+  NSNumber *databaseSchemaVersion = [metadata objectForKey:@"schema_version"];
+  
+  return [databaseSchemaVersion intValue] == DATABASE_SCHEMA_VERSION;
+}
+
 /**
  * Returns the database handle.
  * Opens the database if it is neccesary.
