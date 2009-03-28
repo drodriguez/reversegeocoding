@@ -7,9 +7,14 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
+#import "RGReverseGeocoder.h"
 
-@interface ReverseGeocodingAppDelegate : NSObject <UIApplicationDelegate> {
-    UIWindow *window;
+@interface ReverseGeocodingAppDelegate : NSObject <UIApplicationDelegate, CLLocationManagerDelegate> {
+  UIWindow *window;
+  IBOutlet UITextView *locationInfo;
+  CLLocationManager *locationManager;
+  RGReverseGeocoder *reverseGeocoder;
 }
 
 @property (nonatomic, retain) IBOutlet UIWindow *window;
