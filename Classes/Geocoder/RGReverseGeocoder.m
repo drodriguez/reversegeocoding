@@ -171,12 +171,29 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   int row = [self sectorFromCoordinate:location.coordinate.latitude];
   int col = [self sectorFromCoordinate:location.coordinate.longitude];
   
-  // TODO: Get the eight sectors around the central one
-  int sector = [self hilbertDistanceForRow:row column:col];
+  // Get the eight sectors around the central one
+  NSMutableArray *sectors = [[[NSMutableArray alloc] init] autorelease];
+  int sector;
+  for (int i = -1; i <= 1; i++) {
+    for (int j = -1; j <= 1; j++) {
+      if (row+i < 0 || row+i >= mapDimension_ || col+j < 0 || col+j >= mapDimension_) {
+        continue;
+      }
+      sector = [self hilbertDistanceForRow:row+i column:col+j];
+      [sectors addObject:[NSNumber numberWithInt:sector]];
+    }
+  }
   
-  NSString *query = @"SELECT places.name, countries.name, latitude, longitude "
+  NSMutableString *query = [[[NSMutableString alloc] init] autorelease];
+  [query appendString:@"SELECT places.name, countries.name, latitude, longitude "
     "FROM places JOIN countries ON places.country_id = countries.id "
-    "WHERE sector = ?";
+    "WHERE sector IN ("];
+  BOOL first = YES;
+  for(NSNumber *s in sectors) {
+    [query appendFormat:@"%@%d", (first ? @"" : @", "), [s intValue]];
+    first = NO;
+  }
+  [query appendString:@")"];
   
   sqlite3 *db = self.database;
   sqlite3_stmt *stmt;
@@ -184,14 +201,12 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
     RGLog(@"Can not prepare SQlite statement with error '%s'.", sqlite3_errmsg(db));
     return fallback;
   }
-  if (sqlite3_bind_int(stmt, 1, sector) != SQLITE_OK) {
-    RGLog(@"Can not bind SQLite parameter with error '%s'.", sqlite3_errmsg(db));
-    sqlite3_finalize(stmt);
-    return fallback;
-  }
   
   NSString *name = nil, *country = nil;
   double minDistance = MAX_DISTANCE_ON_EARTH;
+#if defined(DEBUG)
+  double maxDistance = 0.0;
+#endif
   while (sqlite3_step(stmt) == SQLITE_ROW) {
     double lat = sqlite3_column_double(stmt, 2);
     double lon = sqlite3_column_double(stmt, 3);
@@ -220,8 +235,18 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
       }
       country = [NSString stringWithUTF8String:text];
     }
+#if defined(DEBUG)
+    if (distance > maxDistance) {
+      maxDistance = distance;
+    }
+#endif
   }
   sqlite3_finalize(stmt);
+  
+  RGLog(@"Minimun distance: %f", minDistance);
+#if defined(DEBUG)
+  RGLog(@"Maximun distance: %f", maxDistance);
+#endif
   
   if (name != nil && country != nil) {
     return [NSString stringWithFormat:@"%@, %@", name, country];
