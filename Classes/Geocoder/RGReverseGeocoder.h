@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <sqlite3.h>
+#import <CoreLocation/CoreLocation.h>
 
 /**
  * A RGReverseGeocoder looks for places given a coordinate pair.
@@ -20,6 +21,8 @@
   /** Level of recursion of the Hilbert curve to generate the sector of the
    database. Default is 10. */
   int level_;
+  /** Number of rows or columns in the map. It will be 2^level_. */
+  int mapDimension_;
   /** Database handler */
   sqlite3 *database_;
 }
