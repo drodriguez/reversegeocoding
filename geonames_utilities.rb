@@ -40,6 +40,7 @@ def sector_xy(lat, lon, r = 10)
 end
 
 def hilbert_distance(x, y, r = 10)
+  # from Hacker's delight Figure 14-10
   s = 0
   
   r.downto(0) do |i|
@@ -47,11 +48,11 @@ def hilbert_distance(x, y, r = 10)
     yi = (y >> i) & 1 # Get bit i of y
     
     if yi == 0
-      temp = x
-      x = y ^ (-xi)
-      y = temp ^ (-xi)
+      temp = x         # Swap x and y and,
+      x = y ^ (-xi)    # if xi = 1,
+      y = temp ^ (-xi) # complement them.
     end
-    s = 4*s + 2*xi + (xi ^ yi)
+    s = 4*s + 2*xi + (xi ^ yi) # Append two bits to s.
   end
   
   s
