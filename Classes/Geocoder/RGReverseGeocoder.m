@@ -247,7 +247,7 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 + (id)sharedGeocoder {
   @synchronized(self) {
     if (sharedInstance == nil) {
-      [[self alloc] init];
+      sharedInstance = [[self alloc] init];
     }
   }
   
@@ -256,8 +256,8 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 
 + (BOOL)setupDatabase {
   NSString *appResourcesPath = [[NSBundle mainBundle] resourcePath];
-  NSString *dbPath = [appResourcesPath stringByAppendingPathComponent:DATABASE_FILENAME];
-  NSString *plistPath = [dbPath stringByAppendingString:@".plist"];
+  NSString *dbPath = [appResourcesPath stringByAppendingPathComponent:DATABASE_FILENAME @".gz"];
+  NSString *plistPath = [appResourcesPath stringByAppendingPathComponent:DATABASE_FILENAME @".plist"];
   
   NSFileManager *fileManager = [NSFileManager defaultManager];
   
@@ -278,8 +278,22 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
       ![fileManager fileExistsAtPath:plistDestPath] ||
       !checkSameMetadataValues(plistPath, plistDestPath)) {
     NSError *error;
+    // Create Application Support directory if needed
+    NSString *appSupportDir = [dbDestPath stringByDeletingLastPathComponent];
+    if (![fileManager fileExistsAtPath:appSupportDir]) {
+      if ([fileManager createDirectoryAtPath:appSupportDir
+                 withIntermediateDirectories:YES
+                                  attributes:nil
+                                       error:&error]) {
+        RGLog(@"Can not create Application Support directory with error (%d) '%@'",
+              [error code], [error description]);
+        return NO;
+      }
+    }
+    
     if (![fileManager copyItemAtPath:plistPath toPath:plistDestPath error:&error]) {
-      RGLog(@"Can not copy metadata file with error (%d) '%@'", [error code], [error localizedDescription]);
+      RGLog(@"Can not copy metadata file with error (%d) '%@'",
+            [error code], [error description]);
       return NO;
     }
     
@@ -413,12 +427,7 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 #pragma mark Private instance methods
 
 - (id)init {
-  NSString *file = defaultDatabaseFile();
-  if (checkDatabaseFile(file)) {
-    return [self initWithDatabase:file];
-  } else {
-    return nil;
-  }
+  return [self initWithDatabase:defaultDatabaseFile()];
 }
 
 - (int)sectorFromCoordinate:(double)coordinate {
