@@ -13,6 +13,9 @@
 
 #import "RGReverseGeocoder.h"
 
+#include <zlib.h>
+#include <sys/mman.h>
+
 #define DEFAULT_DATABASE_LEVEL 10
 #define DATABASE_SCHEMA_VERSION 1
 #define DATABASE_FILENAME @"geodata.sqlite"
@@ -145,6 +148,72 @@ BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
 }
 
 /**
+ * Decompress a gzip compressed file into the destination file.
+ */
+BOOL decompressFile(NSString *origFile, NSString *destFile) {
+  BOOL done = NO;
+  char *buffer;
+  int bufferSize;
+  
+  gzFile inFile = gzopen([origFile UTF8String], "rb");
+  if (!gzFile) {
+    RNLog(@"Can not read origin database");
+    return NO;
+  }
+  
+  int outFile = open([destFile UTF8String], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  if (outFile == -1) {
+    RNLog(@"Can not create destination database (%d)", errno);
+    gzclose(inFile);
+    return NO;
+  }
+  
+  
+  buffer = mmap(NULL, 256*1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  bufferSize = 256*1024;
+  if (buffer == -1) {
+    buffer = malloc(16*1024);
+    bufferSize = 16*1024;
+  }
+  
+  while(1) {
+    int readLen = gzread(inFile, buffer, bufferSize);
+    
+    if (!readLen) { /* end of file */
+      done = YES;
+      break;
+    }
+    
+    if (readLen < 0) { /* error */
+      RGLog("Read error decompressing data");
+      break;
+    }
+    
+    if (outFile >= 0) {
+      int writeLen;
+      do {
+        writeLen = write(outFile, buffer, readLen);
+      } while (writeLen < 0 && errno == EINTR);
+      if (writeLen < readLen) {
+        RGLog("Write error decompressing data");
+        break;
+      }
+    }
+  }
+  
+  if (bufferSize == 16*1024) {
+    free(buffer);
+  } else {
+    munmap(buffer, bufferSize);
+  }
+  
+  gzclose(inFile);
+  close(outFile);
+  
+  return done;
+}
+
+/**
  * Returns the spherical distance between two points.
  */
 double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -214,9 +283,8 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
       return NO;
     }
     
-    int retval;
-    if ((retval = decompressGzFile(dbPath, dbDestPath)) != Z_OK) {
-      RGLog(@"Can not decompress database file with error (%d)", retval);
+    if (!decompressFile(dbPath, dbDestPath)) {
+      RGLog(@"Can not decompress database file");
       return NO;
     }
   }
