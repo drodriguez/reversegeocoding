@@ -17,8 +17,9 @@
   locationManager = [[CLLocationManager alloc] init];
   locationManager.delegate = self;
   
-  reverseGeocoder = [[RGReverseGeocoder alloc] initWithDatabase:
-                     [[NSBundle mainBundle] pathForResource:@"geodata" ofType:@"sqlite"]];
+  if ([RGReverseGeocoder setupDatabase]) {
+    reverseGeocoder = [RGReverseGeocoder sharedGeocoder];
+  }
   
   [locationManager startUpdatingLocation];
   
@@ -60,7 +61,9 @@
     [update appendFormat:@"Vertical accuracy: %f\n", newLocation.verticalAccuracy];
   }
   
-  [update appendString:[reverseGeocoder placeForLocation:newLocation]];
+  if (reverseGeocoder != nil) {
+    [update appendString:[reverseGeocoder placeForLocation:newLocation]];
+  }
   
   locationInfo.text = update;
 }
