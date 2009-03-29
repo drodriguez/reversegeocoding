@@ -112,12 +112,12 @@ BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
   NSData *metadataData;
   NSDictionary *metadata;
 
-  *metadataData = [NSData dataWithContentsOfFile:file1];
-  *metadata = (NSDictionary *)[NSPropertyListSerialization
-                               propertyListFromData:metadataData
-                               mutabilityOption:NSPropertyListImmutable
-                               format:&format
-                               errorDescription:&error];
+  metadataData = [NSData dataWithContentsOfFile:file1];
+  metadata = (NSDictionary *)[NSPropertyListSerialization
+                              propertyListFromData:metadataData
+                              mutabilityOption:NSPropertyListImmutable
+                              format:&format
+                              errorDescription:&error];
   if (!metadata) {
     RGLogX(@"Application database metadata failed to load with error '%@'.", error);
     return NO;
@@ -127,12 +127,12 @@ BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
   NSNumber *databaseVersion1 = [metadata objectForKey:@"database_version"];
   NSNumber *databaseLevel1 = [metadata objectForKey:@"database_level"];
 
-  *metadataData = [NSData dataWithContentsOfFile:file2];
-  *metadata = (NSDictionary *)[NSPropertyListSerialization
-                               propertyListFromData:metadataData
-                               mutabilityOption:NSPropertyListImmutable
-                               format:&format
-                               errorDescription:&error];
+  metadataData = [NSData dataWithContentsOfFile:file2];
+  metadata = (NSDictionary *)[NSPropertyListSerialization
+                              propertyListFromData:metadataData
+                              mutabilityOption:NSPropertyListImmutable
+                              format:&format
+                              errorDescription:&error];
   if (!metadata) {
     RGLogX(@"Application support database metadata failed to load with error '%@'.", error);
     return NO;
@@ -156,14 +156,14 @@ BOOL decompressFile(NSString *origFile, NSString *destFile) {
   int bufferSize;
   
   gzFile inFile = gzopen([origFile UTF8String], "rb");
-  if (!gzFile) {
-    RNLog(@"Can not read origin database");
+  if (!inFile) {
+    RGLog(@"Can not read origin database");
     return NO;
   }
   
   int outFile = open([destFile UTF8String], O_WRONLY | O_CREAT | O_TRUNC, 0666);
   if (outFile == -1) {
-    RNLog(@"Can not create destination database (%d)", errno);
+    RGLog(@"Can not create destination database (%d)", errno);
     gzclose(inFile);
     return NO;
   }
