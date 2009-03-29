@@ -101,6 +101,50 @@ BOOL checkDatabaseFile(NSString *databaseFile) {
 }
 
 /**
+ * Check that the values on both the metadata files are the same.
+ */
+BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
+  NSString *error;
+  NSPropertyListFormat format;
+  NSData *metadataData;
+  NSDictionary *metadata;
+
+  *metadataData = [NSData dataWithContentsOfFile:file1];
+  *metadata = (NSDictionary *)[NSPropertyListSerialization
+                               propertyListFromData:metadataData
+                               mutabilityOption:NSPropertyListImmutable
+                               format:&format
+                               errorDescription:&error];
+  if (!metadata) {
+    RGLogX(@"Application database metadata failed to load with error '%@'.", error);
+    return NO;
+  }
+  
+  NSNumber *schemaVersion1 = [metadata objectForKey:@"schema_version"];
+  NSNumber *databaseVersion1 = [metadata objectForKey:@"database_version"];
+  NSNumber *databaseLevel1 = [metadata objectForKey:@"database_level"];
+
+  *metadataData = [NSData dataWithContentsOfFile:file2];
+  *metadata = (NSDictionary *)[NSPropertyListSerialization
+                               propertyListFromData:metadataData
+                               mutabilityOption:NSPropertyListImmutable
+                               format:&format
+                               errorDescription:&error];
+  if (!metadata) {
+    RGLogX(@"Application support database metadata failed to load with error '%@'.", error);
+    return NO;
+  }
+  
+  NSNumber *schemaVersion2 = [metadata objectForKey:@"schema_version"];
+  NSNumber *databaseVersion2 = [metadata objectForKey:@"database_version"];
+  NSNumber *databaseLevel2 = [metadata objectForKey:@"database_level"];
+  
+  return [schemaVersion1 isEqualToNumber:schemaVersion2] &&
+    [databaseLevel1 isEqualToNumber:databaseLevel2] &&
+    [databaseVersion1 isEqualToNumber:databaseVersion2];
+}
+
+/**
  * Returns the spherical distance between two points.
  */
 double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -142,8 +186,13 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 }
 
 + (BOOL)setupDatabase {
-  // TODO
-  return NO;
+  NSString *appResourcesPath = [[NSBundle mainBundle] resourcePath];
+  NSString *dbPath = [appResourcesPath stringByAppendingPathComponent:DATABASE_FILENAME];
+  NSString *plistPath = [dbPath stringByAppendingString:@".plist"];
+  
+  
+  
+  return YES;
 }
 
 #pragma mark Public instance methods
