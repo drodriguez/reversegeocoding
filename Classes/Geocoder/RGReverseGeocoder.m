@@ -190,8 +190,39 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   NSString *dbPath = [appResourcesPath stringByAppendingPathComponent:DATABASE_FILENAME];
   NSString *plistPath = [dbPath stringByAppendingString:@".plist"];
   
+  NSFileManager *fileManager = [NSFileManager defaultManager];
   
+  if (![fileManager isReadableFileAtPath:dbPath] ||
+      ![fileManager isReadableFileAtPath:plistPath]) {
+    RGLog(@"Compressed database or metadata are not readable from application bundle");
+    return NO;
+  }
   
+  NSString *dbDestPath = defaultDatabaseFile();
+  if (!dbDestPath) {
+    RGLog(@"Can not find application support directory");
+    return NO;
+  }
+  NSString *plistDestPath = [dbDestPath stringByAppendingString:@".plist"];
+  
+  if (![fileManager fileExistsAtPath:dbDestPath] ||
+      ![fileManager fileExistsAtPath:plistDestPath] ||
+      !checkSameMetadataValues(plistPath, plistDestPath)) {
+    NSError *error;
+    if (![fileManager copyItemAtPath:plistPath toPath:plistDestPath error:&error]) {
+      RGLog(@"Can not copy metadata file with error (%d) '%@'", [error code], [error localizedDescription]);
+      return NO;
+    }
+    
+    int retval;
+    if ((retval = decompressGzFile(dbPath, dbDestPath)) != Z_OK) {
+      RGLog(@"Can not decompress database file with error (%d)", retval);
+      return NO;
+    }
+  }
+  
+  /* The destination files exist and they seem to be up-to-date versions, or
+   we have copied the files succesfully */
   return YES;
 }
 
