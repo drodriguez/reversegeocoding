@@ -171,7 +171,7 @@ BOOL decompressFile(NSString *origFile, NSString *destFile) {
   
   buffer = mmap(NULL, 256*1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
   bufferSize = 256*1024;
-  if (buffer == -1) {
+  if (buffer == (char *)(-1)) {
     buffer = malloc(16*1024);
     bufferSize = 16*1024;
   }
