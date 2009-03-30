@@ -37,8 +37,8 @@
 		658D27AD0F7E82DA0013026F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		658D27CB0F7EC0FC0013026F /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
 		658D27E10F7ECD310013026F /* geodata.sqlite.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = geodata.sqlite.plist; sourceTree = "<group>"; };
-		65C7998C0F7D734D008A70E0 /* RGReverseGeocoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RGReverseGeocoder.h; path = Geocoder/RGReverseGeocoder.h; sourceTree = "<group>"; };
-		65C7998D0F7D734D008A70E0 /* RGReverseGeocoder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = RGReverseGeocoder.m; path = Geocoder/RGReverseGeocoder.m; sourceTree = "<group>"; };
+		65C7998C0F7D734D008A70E0 /* RGReverseGeocoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RGReverseGeocoder.h; sourceTree = SOURCE_ROOT; };
+		65C7998D0F7D734D008A70E0 /* RGReverseGeocoder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RGReverseGeocoder.m; sourceTree = SOURCE_ROOT; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
