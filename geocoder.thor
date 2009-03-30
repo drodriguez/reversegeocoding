@@ -18,6 +18,10 @@ class Geocoder < Thor
   
   DATABASE_SCHEMA_VERSION = 1
   
+  CODE_BASE_URL = "http://github.com/drodriguez/reversegeocoding/blob/master/%file%?raw=true"
+  RG_M_FILE = "RGReverseGeocoder.m"
+  RG_H_FILE = "RGReverseGeocoder.h"
+  
   desc "download all|code|cities|countries", "Download the code or the GeoNames database dump of the specified size. Possible sizes are 1000, 5000 and 15000."
   method_options :size => 5000, :dest => :optional
   def download(what)
@@ -83,7 +87,9 @@ private
   end
   
   def download_code(dest = nil)
-    # TODO
+    dest = dest.nil? ? '.' : dest
+    download_url(CODE_BASE_URL.gsub('%file%', RG_M_FILE), File.join(dest, RG_M_FILE))
+    download_url(CODE_BASE_URL.gsub('%file%', RG_H_FILE), File.join(dest, RG_H_FILE))
   end
   
   def download_url(url, dest)
