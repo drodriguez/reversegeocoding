@@ -21,7 +21,7 @@
 #define MAX_DISTANCE_ON_EARTH 21000.0
 #define EARTH_RADIUS 6378.0
 
-#define RGLogX(s, ...) NSLog(@"%s -" s, __PRETTY_FUNCTION__, ##__VA_ARGS__)
+#define RGLogX(s, ...) NSLog(@"%s - " s, __PRETTY_FUNCTION__, ##__VA_ARGS__)
 #if defined(DEBUG)
 #  define RGLog(s, ...) RGLogX(s, ##__VA_ARGS__)
 #else
