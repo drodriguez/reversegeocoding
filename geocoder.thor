@@ -1,5 +1,7 @@
 $KCODE='u'
 
+
+
 class Geocoder < Thor
   GEONAMES_DUMP_BASE_URL = 'http://download.geonames.org/export/dump/'
   GEONAMES_CITIES_BASE_NAME = 'cities%size%.zip'
@@ -13,6 +15,8 @@ class Geocoder < Thor
   COUNTRIES_CSV_OPTIONS = {
     :headers => %w(ISO ISO3 ISO_numeric fips country capital area population continent tld currency_code currency_name phone postal_code_format postal_code_regex languages geonameid neighbours equivalent_fips_code),
   }
+  
+  DATABASE_SCHEMA_VERSION = 1
   
   desc "download all|code|cities|countries", "Download the code or the GeoNames database dump of the specified size. Possible sizes are 1000, 5000 and 15000."
   method_options :size => 5000, :dest => :optional
@@ -43,7 +47,7 @@ class Geocoder < Thor
     countries = options['countries']
     level = options['level']
     
-    require 'FastCSV'
+    require 'FasterCSV'
     require 'sqlite3'
     
     puts "Creating database..."
@@ -57,6 +61,8 @@ class Geocoder < Thor
     close_database(db)
     puts "Creating metadata file..."
     create_plist_file(to, from, level)
+    puts "Creating RGConfig.h file..."
+    create_header_file(to, from, level)
     puts "Compressing database..."
     `gzip < "#{options['to']}" > "#{options['to']}.gz"`
   end
@@ -154,10 +160,11 @@ private
     open(countries, 'rb') do |io|
       io.rewind unless io.read(3) == "\xef\xbb\xbf" # Skip UTF-8 marker
       io.readline while io.read(1) == '#' # Skip comments at the start of the file
-      FasterCSV.new(io, CSV_OPTIONS.merge(COUNTRIES_OPTIONS)) do |csv|
-        csv.each do |row|
-          country_insert.execute :name => row['country']
-          ids[row['ISO']] = db.last_insert_row_id
+      io.seek(-1, IO::SEEK_CUR) # Unread the last character that wasn't '#'
+      csv = FasterCSV.new(io, CSV_OPTIONS.merge(COUNTRIES_CSV_OPTIONS))
+      csv.each do |row|
+        country_insert.execute :name => row['country']
+        ids[row['ISO']] = db.last_insert_row_id
       end
     end
     country_insert.close
@@ -170,14 +177,14 @@ private
     open(from, 'rb') do |io|
       io.rewind unless io.read(3) == "\xef\xbb\xbf" # Skip UTF-8 marker
       io.readline while io.read(1) == '#' # Skip comments at the start of the file
-      FasterCSV.new(io, CSV_OPTIONS.merge(PLACES_OPTIONS)) do |csv|
-        csv.each do |row|
-          country_id = countries_ids[row['country_code']]
-          lon, lat = row['longitude'].to_f, row['latitude'].to_f
-          x, y = sector_xy(lat, lon, level)
-          sector = hilbert_distance(x, y, level)
-          place_insert.execute :name => row['name'], :latitude => lat, :longitude => lon, :country_id => country_id, :sector => sector
-        end
+      io.seek(-1, IO::SEEK_CUR) # Unread the last character that wasn't '#'
+      csv = FasterCSV.new(io, CSV_OPTIONS.merge(CITIES_CSV_OPTIONS))
+      csv.each do |row|
+        country_id = countries_ids[row['country_code']]
+        lon, lat = row['longitude'].to_f, row['latitude'].to_f
+        x, y = sector_xy(lat, lon, level)
+        sector = hilbert_distance(x, y, level)
+        city_insert.execute :name => row['name'], :latitude => lat, :longitude => lon, :country_id => country_id, :sector => sector
       end
     end
     
@@ -190,6 +197,33 @@ private
   end
   
   def create_plist_file(to, from, level)
-    # TODO
+    require 'osx/cocoa'
+    
+    db_version = File.mtime(from).strftime('%Y%m%d%H%M%S')
+    schema_version = DATABASE_SCHEMA_VERSION
+    
+    dict = OSX::NSDictionary.dictionaryWithObjects_forKeys(
+      [db_version, schema_version, level],
+      ['database_version', 'schema_version', 'database_level'])
+    dict.writeToFile_atomically(to + ".plist", true)
+  end
+  
+  def create_header_file(to, from, level)
+    db_version = File.mtime(from).strftime('%Y%m%d%H%M%S')
+    schema_version = DATABASE_SCHEMA_VERSION
+    
+    open(HEADER_FILE, 'wb') do |io|
+      io.write(<<-HEADER)
+      #ifndef RGCONFIG
+      #define RGCONFIG
+
+      #define DATABASE_VERSION #{db_version}
+      #define SCHEMA_VERSION #{schema_version}
+      #define DATABASE_LEVEL #{level}
+      #define DATABASE_FILENAME @"#{to}"
+
+      #endif
+      HEADER
+    end
   end
 end
