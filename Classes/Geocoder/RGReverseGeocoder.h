@@ -23,11 +23,13 @@
   int level_;
   /** Number of rows or columns in the map. It will be 2^level_. */
   int mapDimension_;
+  /** Schema version of the database */
+  int schemaVersion_;
+  /** Version of the database */
+  NSString *databaseVersion_;
   /** Database handler */
   sqlite3 *database_;
 }
-
-@property (nonatomic, assign) int level;
 
 /**
  * Returns the shared instance of the RGReverseGeocoder.

@@ -16,9 +16,7 @@
 #include <zlib.h>
 #include <sys/mman.h>
 
-#define DEFAULT_DATABASE_LEVEL 10
-#define DATABASE_SCHEMA_VERSION 1
-#define DATABASE_FILENAME @"geodata.sqlite"
+#include "RGConfig.h"
 
 #define MAX_DISTANCE_ON_EARTH 21000.0
 #define EARTH_RADIUS 6378.0
@@ -37,11 +35,19 @@ static RGReverseGeocoder *sharedInstance = nil;
 @interface RGReverseGeocoder ()
 
 @property (nonatomic, assign) sqlite3 *database;
+@property (nonatomic, assign) int level;
 
 /**
  * Init a RGReverseGeocoder with the default database.
  */
 - (id)init;
+
+/**
+ * Check that the database file is current with the actual implementation.
+ * This checks against the <databaseFile>.plist that the schema version is
+ * supported.
+ */
+- (BOOL)checkDatabaseMetadata;
 
 /**
  * Returns the row or column of the sector from the latitude or the longitude.
@@ -77,33 +83,6 @@ NSString *defaultDatabaseFile() {
 }
 
 /**
- * Check that the database file is current with the actual implementation.
- * This checks against the <databaseFile>.plist that the schema version is
- * supported.
- */
-BOOL checkDatabaseFile(NSString *databaseFile) {
-  NSString *plistFile = [databaseFile stringByAppendingString:@".plist"];
-  
-  NSData *metadataData = [NSData dataWithContentsOfFile:plistFile];
-  NSString *error;
-  NSPropertyListFormat format;
-  NSDictionary *metadata =
-  (NSDictionary *)[NSPropertyListSerialization
-                   propertyListFromData:metadataData
-                   mutabilityOption:NSPropertyListImmutable
-                   format:&format
-                   errorDescription:&error];
-  if (!metadata) {
-    RGLogX(@"Database metadata failed to load with error '%@'.", error);
-    return NO;
-  }
-  
-  NSNumber *databaseSchemaVersion = [metadata objectForKey:@"schema_version"];
-  
-  return [databaseSchemaVersion intValue] == DATABASE_SCHEMA_VERSION;
-}
-
-/**
  * Check that the values on both the metadata files are the same.
  */
 BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
@@ -124,7 +103,7 @@ BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
   }
   
   NSNumber *schemaVersion1 = [metadata objectForKey:@"schema_version"];
-  NSNumber *databaseVersion1 = [metadata objectForKey:@"database_version"];
+  NSString *databaseVersion1 = [metadata objectForKey:@"database_version"];
   NSNumber *databaseLevel1 = [metadata objectForKey:@"database_level"];
 
   metadataData = [NSData dataWithContentsOfFile:file2];
@@ -139,12 +118,12 @@ BOOL checkSameMetadataValues(NSString *file1, NSString *file2) {
   }
   
   NSNumber *schemaVersion2 = [metadata objectForKey:@"schema_version"];
-  NSNumber *databaseVersion2 = [metadata objectForKey:@"database_version"];
+  NSString *databaseVersion2 = [metadata objectForKey:@"database_version"];
   NSNumber *databaseLevel2 = [metadata objectForKey:@"database_level"];
   
   return [schemaVersion1 isEqualToNumber:schemaVersion2] &&
     [databaseLevel1 isEqualToNumber:databaseLevel2] &&
-    [databaseVersion1 isEqualToNumber:databaseVersion2];
+    [databaseVersion1 isEqualToString:databaseVersion2];
 }
 
 /**
@@ -291,6 +270,14 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
       }
     }
     
+    if([fileManager fileExistsAtPath:plistDestPath]) {
+      if (![fileManager removeItemAtPath:plistDestPath error:&error]) {
+        RGLog(@"'%@' already exist and can not be removed with error (%d) '%@'",
+              plistDestPath, [error code], [error description]);
+        return NO;
+      }
+    }
+    
     if (![fileManager copyItemAtPath:plistPath toPath:plistDestPath error:&error]) {
       RGLog(@"Can not copy metadata file with error (%d) '%@'",
             [error code], [error description]);
@@ -313,9 +300,8 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 - (id)initWithDatabase:(NSString *)databasePath {
   if (self = [super init]) {
     databasePath_ = [databasePath copy];
-    self.level = DEFAULT_DATABASE_LEVEL;
     
-    if (!checkDatabaseFile(databasePath_)) {
+    if (![self checkDatabaseMetadata]) {
       RGLogX(@"Database schema version for '%@' database differs", databasePath_);
       [databasePath_ release];
       return nil;
@@ -347,8 +333,8 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   }
   
   NSMutableString *query = [[[NSMutableString alloc] init] autorelease];
-  [query appendString:@"SELECT places.name, countries.name, latitude, longitude "
-    "FROM places JOIN countries ON places.country_id = countries.id "
+  [query appendString:@"SELECT cities.name, countries.name, latitude, longitude "
+    "FROM cities JOIN countries ON cities.country_id = countries.id "
     "WHERE sector IN ("];
   BOOL first = YES;
   for(NSNumber *s in sectors) {
@@ -429,6 +415,35 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 - (id)init {
   return [self initWithDatabase:defaultDatabaseFile()];
 }
+
+- (BOOL)checkDatabaseMetadata {
+  NSString *plistFile = [databasePath_ stringByAppendingString:@".plist"];
+  
+  NSData *metadataData = [NSData dataWithContentsOfFile:plistFile];
+  NSString *error;
+  NSPropertyListFormat format;
+  NSDictionary *metadata =
+  (NSDictionary *)[NSPropertyListSerialization
+                   propertyListFromData:metadataData
+                   mutabilityOption:NSPropertyListImmutable
+                   format:&format
+                   errorDescription:&error];
+  if (!metadata) {
+    RGLogX(@"Database metadata failed to load with error '%@'.", error);
+    return NO;
+  }
+  
+  NSNumber *databaseSchemaVersion = [metadata objectForKey:@"schema_version"];
+  if ([databaseSchemaVersion intValue] != SCHEMA_VERSION) {
+    return NO;
+  }
+  
+  schemaVersion_ = [databaseSchemaVersion intValue];
+  databaseVersion_ = [[metadata objectForKey:@"database_version"] retain];
+  self.level = [[metadata objectForKey:@"database_level"] intValue];
+  
+  return YES;
+}  
 
 - (int)sectorFromCoordinate:(double)coordinate {
   // We suppose latitude is also [-180, 180] so the sectors are squares
