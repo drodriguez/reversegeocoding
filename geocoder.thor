@@ -77,7 +77,7 @@ private
     filename = GEONAMES_CITIES_BASE_NAME.gsub('%size%', size)
     dest = dest.nil? ? filename : dest
     download_url(GEONAMES_DUMP_BASE_URL + filename, dest)
-    `unzip "#{dest}"`
+    `unzip -o "#{dest}"`
   end
   
   def download_countries(dest = nil)
