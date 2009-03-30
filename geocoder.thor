@@ -36,15 +36,29 @@ class Geocoder < Thor
   end
   
   desc "database", "Read GeoNames database dumps and transforms it into a SQLite database."
-  method_options :from => 'cities5000.txt', :to => 'geodata.sqlite', :countries => 'countryInfo.txt'
+  method_options :from => 'cities5000.txt', :to => 'geodata.sqlite', :countries => 'countryInfo.txt', :level => 10
   def database(size = 5000)
-    # TODO
-  end
-  
-  desc "compress", "Compress the SQLite database using Gzip"
-  method_options :from => 'geodata.sqlite', :to => 'geodata.sqlite.gz'
-  def compress
-    `gzip < "#{options['from']}" > "#{options['to']}"`
+    from = options['from']
+    to = options['to']
+    countries = options['countries']
+    level = options['level']
+    
+    require 'FastCSV'
+    require 'sqlite3'
+    
+    puts "Creating database..."
+    db = create_database(to)
+    create_countries_table(db)
+    create_cities_table(db)
+    puts "Inserting countries data..."
+    countries_ids = insert_countries(db, countries)
+    puts "Inserting cities data (this could take a while)..."
+    insert_cities(db, from, level, countries_ids)
+    close_database(db)
+    puts "Creating metadata file..."
+    create_plist_file(to, from, level)
+    puts "Compressing database..."
+    `gzip < "#{options['to']}" > "#{options['to']}.gz"`
   end
   
 private
@@ -69,5 +83,113 @@ private
   def download_url(url, dest)
     puts "Downloading #{url} -> #{dest}"
     `curl -o "#{dest}" "#{url}"`
+  end
+  
+  
+  
+  # Database functions
+  
+  def sector_xy(lat, lon, r = 10)
+    # We suppose latitude is also [-180,180] so the sector are squares
+    lat += 180
+    lon += 180
+
+    [(2**r*lat/360.0).floor, (2**r*lon/360.0).floor]
+  end
+  
+  def hilbert_distance(x, y, r = 10)
+    # from Hacker's delight Figure 14-10
+    s = 0
+
+    r.downto(0) do |i|
+      xi = (x >> i) & 1 # Get bit i of x
+      yi = (y >> i) & 1 # Get bit i of y
+
+      if yi == 0
+        temp = x         # Swap x and y and,
+        x = y ^ (-xi)    # if xi = 1,
+        y = temp ^ (-xi) # complement them.
+      end
+      s = 4*s + 2*xi + (xi ^ yi) # Append two bits to s.
+    end
+
+    s
+  end
+  
+  def create_database(to)
+    if File.exists?(to)
+      puts "File '#{to}' already exist. Please move away the file or remove it."
+      exit
+    end
+    
+    SQLite3::Database.new(to)
+  end
+  
+  def create_countries_table(db)
+    db.execute(<<-SQL)
+    CREATE TABLE countries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT
+    )
+    SQL
+  end
+  
+  def create_cities_table(db)
+    db.execute(<<-SQL)
+    CREATE TABLE cities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      sector INTEGER NOT NULL,
+      country_id INTEGER NOT NULL
+    )
+    SQL
+    db.execute("CREATE INDEX IF NOT EXISTS cities_sector_idx ON cities (sector)")
+  end
+  
+  def insert_countries(db, countries)
+    ids = Hash.new
+    country_insert = db.prepare("INSERT INTO countries (name) VALUES (:name)")
+    open(countries, 'rb') do |io|
+      io.rewind unless io.read(3) == "\xef\xbb\xbf" # Skip UTF-8 marker
+      io.readline while io.read(1) == '#' # Skip comments at the start of the file
+      FasterCSV.new(io, CSV_OPTIONS.merge(COUNTRIES_OPTIONS)) do |csv|
+        csv.each do |row|
+          country_insert.execute :name => row['country']
+          ids[row['ISO']] = db.last_insert_row_id
+      end
+    end
+    country_insert.close
+    
+    ids
+  end
+  
+  def insert_cities(db, from, level, countries_ids)
+    city_insert = db.prepare("INSERT INTO cities (name, latitude, longitude, sector, country_id) VALUES (:name, :latitude, :longitude, :sector, :country_id)")
+    open(from, 'rb') do |io|
+      io.rewind unless io.read(3) == "\xef\xbb\xbf" # Skip UTF-8 marker
+      io.readline while io.read(1) == '#' # Skip comments at the start of the file
+      FasterCSV.new(io, CSV_OPTIONS.merge(PLACES_OPTIONS)) do |csv|
+        csv.each do |row|
+          country_id = countries_ids[row['country_code']]
+          lon, lat = row['longitude'].to_f, row['latitude'].to_f
+          x, y = sector_xy(lat, lon, level)
+          sector = hilbert_distance(x, y, level)
+          place_insert.execute :name => row['name'], :latitude => lat, :longitude => lon, :country_id => country_id, :sector => sector
+        end
+      end
+    end
+    
+    city_insert.close
+  end
+  
+  def close_database(db)
+    db.execute('VACUUM')
+    db.close
+  end
+  
+  def create_plist_file(to, from, level)
+    # TODO
   end
 end
