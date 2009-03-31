@@ -83,10 +83,10 @@ static RGReverseGeocoder *sharedInstance = nil;
 
 /**
  * Returns the path of the default database file.
- * This path is <NSApplicationSupportDirectory>/geodata.sqlite.
+ * This path is <NSDocumentDirectory>/geodata.sqlite.
  */
 NSString *defaultDatabaseFile() {
-  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
   
   if ([paths count] == 0) {
     RGLogX(@"Application Support directory in User Domain not found.");
@@ -272,19 +272,7 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   if (![fileManager fileExistsAtPath:dbDestPath] ||
       ![fileManager fileExistsAtPath:plistDestPath] ||
       !checkSameMetadataValues(plistPath, plistDestPath)) {
-    NSError *error;
-    // Create Application Support directory if needed
-    NSString *appSupportDir = [dbDestPath stringByDeletingLastPathComponent];
-    if (![fileManager fileExistsAtPath:appSupportDir]) {
-      if ([fileManager createDirectoryAtPath:appSupportDir
-                 withIntermediateDirectories:YES
-                                  attributes:nil
-                                       error:&error]) {
-        RGLog(@"Can not create Application Support directory with error (%d) '%@'",
-              [error code], [error description]);
-        return NO;
-      }
-    }
+    NSError *error = nil;
     
     if([fileManager fileExistsAtPath:plistDestPath]) {
       if (![fileManager removeItemAtPath:plistDestPath error:&error]) {
