@@ -19,6 +19,7 @@
 		658D27CC0F7EC0FC0013026F /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 658D27CB0F7EC0FC0013026F /* libsqlite3.dylib */; };
 		658D27E20F7ECD310013026F /* geodata.sqlite.plist in Resources */ = {isa = PBXBuildFile; fileRef = 658D27E10F7ECD310013026F /* geodata.sqlite.plist */; };
 		65C7998E0F7D734D008A70E0 /* RGReverseGeocoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 65C7998D0F7D734D008A70E0 /* RGReverseGeocoder.m */; };
+		65E16EDB0F824AD10045F90B /* dist.plist in Resources */ = {isa = PBXBuildFile; fileRef = 65E16EDA0F824AD10045F90B /* dist.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		658D27E10F7ECD310013026F /* geodata.sqlite.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = geodata.sqlite.plist; sourceTree = "<group>"; };
 		65C7998C0F7D734D008A70E0 /* RGReverseGeocoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RGReverseGeocoder.h; sourceTree = SOURCE_ROOT; };
 		65C7998D0F7D734D008A70E0 /* RGReverseGeocoder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RGReverseGeocoder.m; sourceTree = SOURCE_ROOT; };
+		65E16EDA0F824AD10045F90B /* dist.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = dist.plist; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -105,6 +107,7 @@
 				28AD733E0D9D9553002E5188 /* MainWindow.xib */,
 				8D1107310486CEB800E47090 /* Info.plist */,
 				658D27E10F7ECD310013026F /* geodata.sqlite.plist */,
+				65E16EDA0F824AD10045F90B /* dist.plist */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -177,6 +180,7 @@
 				28AD733F0D9D9553002E5188 /* MainWindow.xib in Resources */,
 				658D27E20F7ECD310013026F /* geodata.sqlite.plist in Resources */,
 				6559E07E0F8032F000AD8765 /* geodata.sqlite.gz in Resources */,
+				65E16EDB0F824AD10045F90B /* dist.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,6 +227,38 @@
 			};
 			name = Release;
 		};
+		65E16ED70F824A9B0045F90B /* AdHoc */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				CODE_SIGN_ENTITLEMENTS = dist.plist;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Daniel Rodríguez Troitiño";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PREBINDING = NO;
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "858315C2-469F-4821-9631-9B2A9602069A";
+				SDKROOT = iphoneos2.0;
+			};
+			name = AdHoc;
+		};
+		65E16ED80F824A9B0045F90B /* AdHoc */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = ReverseGeocoding_Prefix.pch;
+				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
+				INFOPLIST_FILE = Info.plist;
+				PRODUCT_NAME = ReverseGeocoding;
+			};
+			name = AdHoc;
+		};
 		C01FCF4F08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -257,6 +293,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1D6058940D05DD3E006BFB54 /* Debug */,
+				65E16ED80F824A9B0045F90B /* AdHoc */,
 				1D6058950D05DD3E006BFB54 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -266,6 +303,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C01FCF4F08A954540054247B /* Debug */,
+				65E16ED70F824A9B0045F90B /* AdHoc */,
 				C01FCF5008A954540054247B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
