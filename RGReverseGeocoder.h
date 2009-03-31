@@ -73,9 +73,18 @@
  * This method looks for places in the same sector as the coordinates provided
  * and its neighbours, then calculates the place with minumun distance.
  *
- * @return A string in the format "City, Country" or nil if none found.
+ * @return A string in the format "City, Country" or "latitude, longitude" if
+ *         none found.
  */
 - (NSString *)placeForLocation:(CLLocation *)location;
+
+/**
+ * Same as the placeForLocation: method, but using latitude and longitude.
+ *
+ * @return A string in the format "City, Country" or "latitude, longitude" if
+ *         none found.
+ */
+- (NSString *)placeForLatitude:(double)latitude longitude:(double)longitude;
 
 /**
  * Setup the default database from the application resources.

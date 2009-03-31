@@ -329,12 +329,16 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
 }
 
 - (NSString *)placeForLocation:(CLLocation *)location {
+  return [self placeForLatitude:location.coordinate.latitude
+                      longitude:location.coordinate.longitude];
+}
+
+- (NSString *)placeForLatitude:(double)latitude longitude:(double)longitude {
   NSString *fallback = [NSString stringWithFormat:@"%f, %f",
-                        location.coordinate.latitude,
-                        location.coordinate.longitude];
+                        latitude, longitude];
   
-  int row = [self sectorFromCoordinate:location.coordinate.latitude];
-  int col = [self sectorFromCoordinate:location.coordinate.longitude];
+  int row = [self sectorFromCoordinate:latitude];
+  int col = [self sectorFromCoordinate:longitude];
   
   // Get the eight sectors around the central one
   NSMutableArray *sectors = [[[NSMutableArray alloc] init] autorelease];
@@ -375,10 +379,8 @@ double sphericalDistance(double lat1, double lon1, double lat2, double lon2) {
   while (sqlite3_step(stmt) == SQLITE_ROW) {
     double lat = sqlite3_column_double(stmt, 2);
     double lon = sqlite3_column_double(stmt, 3);
-    double distance = sphericalDistance(location.coordinate.latitude,
-                                        location.coordinate.longitude,
-                                        lat,
-                                        lon);
+    double distance = sphericalDistance(latitude, longitude,
+                                        lat, lon);
     if (distance < minDistance) {
       minDistance = distance;
       
