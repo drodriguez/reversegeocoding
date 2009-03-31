@@ -96,6 +96,7 @@ private
     size = size.to_s
     filename = GEONAMES_CITIES_BASE_NAME.gsub('%size%', size)
     dest = dest.nil? ? filename : dest
+    dest = File.join(dest, filename) if File.directory?(dest)
     download_url(GEONAMES_DUMP_BASE_URL + filename, dest)
     `unzip -o "#{dest}"`
   end
@@ -103,11 +104,13 @@ private
   def download_countries(dest = nil)
     filename = GEONAMES_COUNTRY_INFO
     dest = dest.nil? ? filename : dest
+    dest = File.join(dest, filename) if File.directory?(dest)
     download_url(GEONAMES_DUMP_BASE_URL + filename, dest)
   end
   
   def download_code(dest = nil)
     dest = dest.nil? ? '.' : dest
+    dest = File.dirname(dest) unless File.directory?(dest)
     download_url(CODE_BASE_URL.gsub('%file%', RG_M_FILE), File.join(dest, RG_M_FILE))
     download_url(CODE_BASE_URL.gsub('%file%', RG_H_FILE), File.join(dest, RG_H_FILE))
   end
