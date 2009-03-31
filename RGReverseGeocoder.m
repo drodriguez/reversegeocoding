@@ -157,12 +157,13 @@ BOOL decompressFile(NSString *origFile, NSString *destFile) {
     return NO;
   }
   
-  int outFile = open([destFile UTF8String], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-  if (outFile == -1) {
-    RGLog(@"Can not create destination database (%d)", errno);
+  NSOutputStream *outFile = [NSOutputStream outputStreamToFileAtPath:destFile append:NO];
+  if (!outFile) {
+    RGLog(@"Can not create destination database");
     gzclose(inFile);
     return NO;
   }
+  [outFile open];
   
   
   buffer = mmap(NULL, 256*1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -185,13 +186,11 @@ BOOL decompressFile(NSString *origFile, NSString *destFile) {
       break;
     }
     
-    if (outFile >= 0) {
-      int writeLen;
-      do {
-        writeLen = write(outFile, buffer, readLen);
-      } while (writeLen < 0 && errno == EINTR);
+    if (outFile) {
+      int writeLen = [outFile write:(const uint8_t *)buffer maxLength:readLen];
       if (writeLen < readLen) {
-        RGLog("Write error decompressing data");
+        RGLog("Write error decompressing data with error (%d) '%@'",
+              [[outFile streamError] code], [[outFile streamError] description]);
         break;
       }
     }
@@ -204,7 +203,7 @@ BOOL decompressFile(NSString *origFile, NSString *destFile) {
   }
   
   gzclose(inFile);
-  close(outFile);
+  [outFile close];
   
   return done;
 }
