@@ -89,7 +89,7 @@ class Geocoder < Thor
     puts "Creating RGConfig.h file..."
     create_header_file(to, from, level)
     puts "Compressing database..."
-    `gzip < "#{options['to']}" > "#{options['to']}.gz"`
+    `gzip -9 < "#{options['to']}" > "#{options['to']}.gz"`
   end
   
 private
