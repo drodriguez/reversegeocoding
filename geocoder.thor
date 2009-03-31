@@ -98,7 +98,7 @@ private
     dest = dest.nil? ? filename : dest
     dest = File.join(dest, filename) if File.directory?(dest)
     download_url(GEONAMES_DUMP_BASE_URL + filename, dest)
-    `unzip -o "#{dest}"`
+    `unzip -o "#{dest}" -d #{File.dirname(dest)}`
   end
   
   def download_countries(dest = nil)
