@@ -41,6 +41,7 @@ class Geocoder < Thor
   CODE_BASE_URL = "http://github.com/drodriguez/reversegeocoding/blob/master/%file%?raw=true"
   RG_M_FILE = "RGReverseGeocoder.m"
   RG_H_FILE = "RGReverseGeocoder.h"
+  RG_CONFIG_FILE = "RGConfig.h"
   
   desc "download all|code|cities|countries", "Download the code or the GeoNames database dump of the specified size. Possible sizes are 1000, 5000 and 15000."
   method_options :size => 5000, :dest => :optional
@@ -241,7 +242,7 @@ private
     db_version = File.mtime(from).strftime('%Y%m%d%H%M%S')
     schema_version = DATABASE_SCHEMA_VERSION
     
-    open(HEADER_FILE, 'wb') do |io|
+    open(RG_CONFIG_FILE, 'wb') do |io|
       io.write(<<-HEADER)
       #ifndef RGCONFIG
       #define RGCONFIG
