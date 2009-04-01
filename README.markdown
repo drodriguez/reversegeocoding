@@ -79,7 +79,7 @@ of the source code and the example project included in this Git repository.
 Credits
 =======
 
-Author: Daniel Rodríguez Troitiño <drodrigueztroitino thAT yahoo thOT es>
+Author: Daniel Rodríguez Troitiño (drodrigueztroitino thAT yahoo thOT es)
 
 This project could not have been done without the free data provided by
 GeoNames <http://geonames.org>. GeoNames data is licensed under a Creative
